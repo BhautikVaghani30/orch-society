@@ -1,0 +1,106 @@
+components:
+  examples:
+    SocietyRegistrationSuccess:
+      summary: Registration Successful
+      value:
+        meta:
+          timestamp: "2025-12-21T08:24:27.263895Z"
+          status: "success"
+        data:
+          societyId: "b626c700-4556-45b5-8ebf-330083e2ecd3"
+          name: "Omkar homes Residences"
+          country: "USA"
+          state: "California"
+          city: "San Francisco"
+          address: "123 Innovation Drive, Suite 100"
+          pincode: "94105"
+          landmark: "Near the Bay Bridge"
+          createdByUserId: "a9b8c7d6-e5f4-g3h2-i1j0-k9l8m7n6o5p4"
+          createdAt: "2025-12-21T13:54:27.2514616"
+          updatedAt: "2025-12-21T13:54:27.2514616"
+          status: "ACTIVE"
+          id: "b626c700-4556-45b5-8ebf-330083e2ecd3"
+        messages:
+          - code: "S_SCTY_P_111_SOCIETY_REGISTRATION_SUCCESSFULLY"
+    SocietyCountryRequired:
+      summary: Error - Country Required
+      value:
+        meta:
+          timestamp: "2025-12-21T08:23:35.695040Z"
+          status: "fail"
+        data: []
+        messages:
+          - type: "ERROR"
+            code: "E_SCTY_P_103_ADDRESS_COUNTRY_REQUIRED"
+    SocietyStateRequired:
+      summary: Error - State Required
+      value:
+        meta:
+          timestamp: "2025-12-21T08:24:54.641340600Z"
+          status: "fail"
+        data: []
+        messages:
+          - type: "ERROR"
+            code: "E_SCTY_P_104_ADDRESS_STATE_REQUIRED"
+    SocietyCityRequired:
+      summary: Error - City Required
+      value:
+        meta:
+          timestamp: "2025-12-21T08:25:11.241508900Z"
+          status: "fail"
+        data: []
+        messages:
+          - type: "ERROR"
+            code: "E_SCTY_P_105_ADDRESS_CITY_REQUIRED"
+    SocietyAddressRequired:
+      summary: Error - Address Required
+      value:
+        meta:
+          timestamp: "2025-12-21T08:25:24.133639100Z"
+          status: "fail"
+        data: []
+        messages:
+          - type: "ERROR"
+            code: "E_SCTY_P_106_ADDRESS_REQUIRED"
+    SocietyAddressMaxLength:
+      summary: Error - Address Max Length
+      value:
+        meta:
+          timestamp: "2025-12-21T08:25:42.951307200Z"
+          status: "fail"
+        data: []
+        messages:
+          - type: "ERROR"
+            code: "E_SCTY_P_107_ADDRESS_MAX_LENGTH"
+    SocietyPincodeMissing:
+      summary: Error - Pincode Required
+      value:
+        meta:
+          timestamp: "2025-12-21T08:26:04.031255600Z"
+          status: "fail"
+        data: []
+        messages:
+          - type: "ERROR"
+            code: "E_SCTY_P_108_PINCODE_REQUIRED"
+          - type: "ERROR"
+            code: "E_SCTY_P_109_PINCODE_INVALID_FORMAT"
+    SocietyPincodeInvalidFormat:
+      summary: Error - Pincode Invalid Format
+      value:
+        meta:
+          timestamp: "2025-12-21T08:26:13.690839400Z"
+          status: "fail"
+        data: []
+        messages:
+          - type: "ERROR"
+            code: "E_SCTY_P_109_PINCODE_INVALID_FORMAT"
+    SocietyCreatedByRequired:
+      summary: Error - Created By User ID Required
+      value:
+        meta:
+          timestamp: "2025-12-21T08:26:44.172068100Z"
+          status: "fail"
+        data: []
+        messages:
+          - type: "ERROR"
+            code: "E_SCTY_P_110_CREATED_BY_ID_REQUIRED"

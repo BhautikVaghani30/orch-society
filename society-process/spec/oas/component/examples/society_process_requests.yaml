@@ -1,0 +1,86 @@
+components:
+  examples:
+    # --- VALID REQUESTS ---
+    FullValidRequest:
+      summary: Full Request
+      description: A fully populated request including optional fields like landmark.
+      value:
+        name: "Greenwood Park Residences"
+        country: "USA"
+        state: "California"
+        city: "San Francisco"
+        address: "123 Innovation Drive, Suite 100"
+        pincode: "94105"
+        landmark: "Near the Bay Bridge"
+        createdByUserId: "a9b8c7d6-e5f4-g3h2-i1j0-k9l8m7n6o5p4"
+
+    MinimalValidRequest:
+      summary: Minimal Request
+      description: Only the mandatory @NotBlank fields are provided. Landmark is omitted.
+      value:
+        name: "Sunrise Apartments"
+        country: "USA"
+        state: "New York"
+        city: "New York"
+        address: "456 Market St"
+        pincode: "10001"
+        createdByUserId: "b1c2d3e4-f5g6-h7i8-j9k0-l1m2n3o4p5q6"
+
+    # --- INVALID REQUESTS (Validation Failures) ---
+    InvalidPincodeFormat:
+      summary: Invalid Pincode (Format)
+      description: Fails @Pattern(regexp = "^[0-9]{4,10}$") because it contains letters.
+      value:
+        name: "Tech Hub"
+        country: "USA"
+        state: "Texas"
+        city: "Austin"
+        address: "789 Tech Blvd"
+        pincode: "ZIP-1234"
+        createdByUserId: "c3d4e5f6-g7h8-i9j0-k1l2-m3n4o5p6q7r8"
+
+    InvalidPincodeLength:
+      summary: Invalid Pincode (Length)
+      description: Fails @Pattern because it is too short (less than 4 digits).
+      value:
+        name: "Small Pincode Society"
+        country: "USA"
+        state: "Texas"
+        city: "Austin"
+        address: "789 Tech Blvd"
+        pincode: "123"
+        createdByUserId: "c3d4e5f6-g7h8-i9j0-k1l2-m3n4o5p6q7r8"
+
+    InvalidMissingRequired:
+      summary: Missing Required Fields
+      description: Fails @NotBlank for 'name' and 'address'.
+      value:
+        country: "USA"
+        state: "Florida"
+        city: "Miami"
+        pincode: "33101"
+        createdByUserId: "d4e5f6g7-h8i9-j0k1-l2m3-n4o5p6q7r8s9"
+
+    InvalidNameTooLong:
+      summary: Name Exceeds Max Length
+      description: Fails @Size(max = 255) constraint.
+      value:
+        name: "This name is intentionally way too long to demonstrate the validation error that occurs when the character count exceeds the maximum limit of two hundred and fifty-five characters defined in the database schema and the data transfer object validation annotations. This string is meant to trigger the max length validation check."
+        country: "USA"
+        state: "Nevada"
+        city: "Las Vegas"
+        address: "101 Strip Blvd"
+        pincode: "89109"
+        createdByUserId: "e5f6g7h8-i9j0-k1l2-m3n4-o5p6q7r8s9t0"
+
+    InvalidEmptyStrings:
+      summary: Empty String Validation
+      description: Fails @NotBlank because values are empty strings or whitespace.
+      value:
+        name: " "
+        country: ""
+        state: "California"
+        city: "San Francisco"
+        address: " "
+        pincode: "94105"
+        createdByUserId: "a9b8c7d6-e5f4-g3h2-i1j0-k9l8m7n6o5p4"

@@ -1,0 +1,141 @@
+buildscript {
+    repositories { mavenCentral() }
+    dependencies { classpath 'org.yaml:snakeyaml:2.2' }
+}
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.0'
+    id 'io.spring.dependency-management' version '1.1.5'
+    id 'org.springdoc.openapi-gradle-plugin' version '1.9.0'
+}
+
+group = 'com.core.township'
+version = '0.0.1-SNAPSHOT'
+description = 'This service is responsible for managing society-related operations.'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    all {
+        exclude group: 'org.springdoc', module: 'springdoc-openapi-webflux-core'
+    }
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
+    implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.0.4'
+
+    runtimeOnly 'io.asyncer:r2dbc-mysql'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.3.Final'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.projectreactor:reactor-test'
+    implementation 'org.mapstruct:mapstruct:1.5.3.Final'
+    implementation 'com.core.township:common:1.1.0'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+
+// If the flag -PKeepSpec is passed, generate the docs after the build
+if (project.hasProperty('KeepSpec')) {
+    tasks.named('build') {
+        finalizedBy 'generateOpenApiDocs'
+    }
+}
+
+//import org.yaml.snakeyaml.Yaml
+// Apply the external Swagger configuration (Big Tech pattern)
+apply from: 'gradle/swagger-gen.gradle'
+apply from: 'gradle/swagger-ui.gradle'
+
+
+// Disable "org.springdoc.openapi-gradle-plugin" plugin tasks when running Tests
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(test) && !graph.hasTask(build)) {
+        // Disables the tasks and will indicate "SKIPPED" next to them if they were going to run
+        tasks.findByName("generateOpenApiDocs").enabled(false)
+    }
+}
+
+import org.gradle.internal.os.OperatingSystem
+
+// Configure OpenAPI URLs and output
+def openApiUrl = "http://localhost:8083/v3/api-docs.yaml"
+def openApiOutputFile = file("${projectDir}/spec/oas/openapi.yaml")
+
+// Task to download OpenAPI YAML
+task downloadOpenApiYaml(type: Exec) {
+    doFirst {
+        println "Downloading OpenAPI spec from $openApiUrl"
+        openApiOutputFile.parentFile.mkdirs()
+    }
+
+    if (OperatingSystem.current().isWindows()) {
+        commandLine 'powershell', '-Command', "Invoke-WebRequest -Uri $openApiUrl -OutFile '${openApiOutputFile}'"
+    } else {
+        commandLine 'curl', '-s', '-o', openApiOutputFile, openApiUrl
+    }
+}
+task injectOpenApiYaml {
+    dependsOn downloadOpenApiYaml, jar
+
+    doLast {
+        def jarFile = file("${buildDir}/libs/${project.name}-${project.version}.jar")
+        if (!jarFile.exists()) {
+            throw new GradleException("JAR file not found: ${jarFile}")
+        }
+
+        println "Injecting OpenAPI YAML into JAR: $jarFile"
+
+        // Create temp directory to stage file
+        def tmpDir = new File(buildDir, "tmp/openapi-injection")
+        tmpDir.mkdirs()
+        copy {
+            from openApiOutputFile
+            into tmpDir
+            rename { "openapi.yaml" }
+        }
+
+        // Path inside JAR
+        def openApiPathInJar = "BOOT-INF/classes/static/orch/society/process/oas"
+
+        // Create a new JAR with existing content + injected YAML
+        def tmpJar = new File(buildDir, "libs/${project.name}-${project.version}-tmp.jar")
+        ant.jar(destfile: tmpJar, update: true) {
+            fileset(file: jarFile)
+            fileset(dir: tmpDir, includes: "openapi.yaml") {
+                prefix = openApiPathInJar
+            }
+        }
+
+        // Replace old JAR with new one
+        jarFile.delete()
+        tmpJar.renameTo(jarFile)
+
+        println "OpenAPI YAML injected successfully!"
+    }
+}
+
+// Ensure JAR task runs after injection
+jar.finalizedBy injectOpenApiYaml

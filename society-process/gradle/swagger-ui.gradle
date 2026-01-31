@@ -1,0 +1,74 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'org.yaml:snakeyaml:2.2'
+    }
+}
+
+apply plugin: 'java'
+
+def deployCfg = new org.yaml.snakeyaml.Yaml()
+        .load(new File("$projectDir/spec/infra/deploy.yaml").newInputStream())
+println "====== DEPLOY YAML DEBUG ======"
+println "tier    : ${deployCfg?.developer?.tier}"
+println "domain  : ${deployCfg?.developer?.domain}"
+println "service : ${deployCfg?.developer?.service}"
+println "================================"
+
+def deployPath = ""
+deployPath += deployCfg.developer.tier ? "/${deployCfg.developer.tier}" : ""
+deployPath += deployCfg.developer.domain ? "/${deployCfg.developer.domain}" : ""
+deployPath += deployCfg.developer.service ? "/${deployCfg.developer.service}" : ""
+println "Operating System : ${org.gradle.internal.os.OperatingSystem.current().getName()}"
+println "Is Windows       : ${org.gradle.internal.os.OperatingSystem.current().isWindows()}"
+
+println "Resolved deployPath => '${deployPath}'"
+
+
+processResources {
+
+    def swaggerVersion = "5.17.14"
+    def tmpDir = file("${buildDir}/swagger-ui")
+
+    println "Downloading Swagger UI v${swaggerVersion}"
+    println "Temp dir : ${tmpDir.absolutePath}"
+
+    tmpDir.mkdirs()
+
+    def zipFile = file("${tmpDir}/swagger-ui-${swaggerVersion}.zip")
+
+    ant.get(
+            src: "https://github.com/swagger-api/swagger-ui/archive/refs/tags/v${swaggerVersion}.zip",
+            dest: zipFile,
+            skipexisting: true
+    )
+
+    ant.unzip(
+            src: zipFile,
+            dest: tmpDir
+    )
+
+    def swaggerDist = file("${tmpDir}/swagger-ui-${swaggerVersion}/dist")
+
+    println "Swagger dist exists : ${swaggerDist.exists()}"
+    println "Swagger dist path   : ${swaggerDist.absolutePath}"
+
+    if (!swaggerDist.exists()) {
+        throw new GradleException("Swagger UI dist folder not found!")
+    }
+
+    from(swaggerDist) {
+        into "static$deployPath/oas"
+    }
+
+    from("spec/oas") {
+        into "static$deployPath/oas"
+    }
+
+    doLast {
+        delete tmpDir
+    }
+}
+

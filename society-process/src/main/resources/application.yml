@@ -1,0 +1,36 @@
+spring:
+  main:
+    web-application-type: reactive
+  threads:
+    virtual:
+      enabled: true # Recommended for Java 21+ to handle offloaded tasks
+  codec:
+    max-in-memory-size: 1MB
+  # Database initialization settings
+  sql:
+    init:
+      # This prevents the app from failing if the schema.sql script runs when tables already exist.
+      continue-on-error: true
+
+server:
+  port: 8080
+  netty:
+    # Critical for freeing up resources from dropped connections
+    idle-timeout: 30s
+    connection-timeout: 20s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,mappings
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    # Shows mapping registration for Controllers
+    org.springframework.web.reactive.result.method.annotation.RequestMappingHandlerMapping: DEBUG
+    # Shows mapping registration for Functional Routes
+    org.springframework.web.reactive.function.server.support.RouterFunctionMapping: DEBUG

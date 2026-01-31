@@ -1,0 +1,148 @@
+
+
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+        mavenCentral()
+    }
+    ext {
+        set('springdocOpenApiVersion', '1.4.6')
+    }
+    dependencies {
+        classpath 'org.yaml:snakeyaml:1.25'
+    }
+}
+
+dependencies {
+    implementation("org.springdoc:springdoc-openapi-webflux-core:${springdocOpenApiVersion}")
+}
+
+import org.gradle.internal.os.OperatingSystem
+
+def deployCfg = new org.yaml.snakeyaml.Yaml().load(new File("$projectDir/spec/infra/deploy.yaml").newInputStream())
+def openapi_dir = ""
+def openapi_file = "openapi.yaml"
+def jar_command = ""
+
+def deployPath = ""
+println "Operating System : ${org.gradle.internal.os.OperatingSystem.current().getName()}"
+println "Is Windows       : ${org.gradle.internal.os.OperatingSystem.current().isWindows()}"
+
+println "Building for " + org.gradle.internal.os.OperatingSystem.current().getName() + "'s operating system"
+if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+    deployPath = deployCfg.developer.tier ? "\\${deployCfg.developer.tier}" : ""
+    deployPath += deployCfg.developer.domain ? "\\${deployCfg.developer.domain}" : ""
+    deployPath += deployCfg.developer.service ? "\\${deployCfg.developer.service}" : ""
+
+    openapi_dir = "BOOT-INF\\classes\\static\\$deployPath\\oas"
+} else {
+    deployPath = deployCfg.developer.tier ? "/${deployCfg.developer.tier}" : ""
+    deployPath += deployCfg.developer.domain ? "/${deployCfg.developer.domain}" : ""
+    deployPath += deployCfg.developer.service ? "/${deployCfg.developer.service}" : ""
+
+    openapi_dir = "BOOT-INF/classes/static/$deployPath/oas"
+}
+if (project.hasProperty("keepSpec")) {
+    openapi_dir = "spec/oas"
+}
+if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+    jar_command = "jar uf build\\libs\\$project.name-$project.version" + ".jar $openapi_dir/$openapi_file"
+} else {
+    jar_command = "jar uf build/libs/$project.name-$project.version" + ".jar $openapi_dir/$openapi_file"
+}
+
+task injectGeneratedSwagger {
+    dependsOn 'generateOpenApiDocs'
+
+    doFirst {
+        println "====== INJECT SWAGGER ======"
+        println "OpenAPI dir   : ${openapi_dir}"
+        println "OpenAPI file  : ${openapi_file}"
+        println "Jar command   : ${jar_command}"
+        println "KeepSpec flag : ${project.hasProperty("keepSpec")}"
+        println "============================"
+    }
+
+    doLast {
+        exec {
+            if (OperatingSystem.current().isWindows()) {
+                executable = "cmd"
+                args = ["-c", jar_command]
+            } else {
+                executable = "bash"
+                args = ["-c", jar_command]
+            }
+        }
+
+        if (!project.hasProperty("keepSpec")) {
+            delete "BOOT-INF"
+        }
+    }
+}
+
+tasks.named('bootJar') {
+    finalizedBy 'injectGeneratedSwagger'
+}
+
+openApi {
+    println "====== OPENAPI CONFIG ======"
+    println "apiDocsUrl : http://localhost:8083/v3/api-docs.yaml"
+    println "outputDir  : ${openapi_dir}"
+    println "outputFile : ${openapi_file}"
+    println "============================"
+
+    apiDocsUrl.set("http://localhost:8083/v3/api-docs.yaml")
+    outputDir.set(file("$openapi_dir"))
+    outputFileName.set("$openapi_file")
+    customBootRun {
+        systemProperties = ['server.port': '8083']
+    }
+    waitTimeInSeconds.set(60)
+    apiDocsUrl.set("http://localhost:8083/v3/api-docs.yaml")
+    outputDir.set(file("$openapi_dir"))
+    outputFileName.set("$openapi_file")
+    customBootRun {
+        systemProperties = ['server.port': '8083']
+    }
+    waitTimeInSeconds.set(60)
+}
+
+import org.yaml.snakeyaml.Yaml
+tasks.named('generateOpenApiDocs') {
+    doLast {
+        def yaml = new Yaml()
+        def oasFile = file("${outputDir.get()}/${outputFileName.get()}")
+        def examplesFile = file("spec/oas/component/examples/society_process_requests.yaml")
+
+        if (oasFile.exists() && examplesFile.exists()) {
+            Map oas = yaml.load(oasFile.newInputStream())
+            Map examples = yaml.load(examplesFile.newInputStream())
+
+            if (!oas.components) oas.components = [:]
+            if (!oas.components.examples) oas.components.examples = [:]
+
+            oas.components.examples.putAll(examples)
+
+            oasFile.withWriter { writer ->
+                yaml.dump(oas, writer)
+            }
+            println "Successfully merged examples from society-requests.yaml into ${oasFile.name}"
+        }
+    }
+}
+
+// Disable "org.springdoc.openapi-gradle-plugin" tasks when running only Tests
+// This speeds up CI/CD pipelines and local testing
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(test) && !graph.hasTask(build)) {
+        // Disables the tasks so they don't slow down simple test runs
+        def forkedTask = tasks.findByName("forkedSpringBootRun")
+        if (forkedTask) forkedTask.enabled = false
+
+        def genTask = tasks.findByName("generateOpenApiDocs")
+        if (genTask) genTask.enabled = false
+    }
+}
+
